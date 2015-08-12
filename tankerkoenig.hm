@@ -1,0 +1,321 @@
+!-----------------------------------------------------------------------------
+! Hier alle was man verändern kann/muss
+! Voraussetzung: CUxD und ein API Zugang bei Tankkoenig.de
+!-----------------------------------------------------------------------------
+var apikey = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"; !Ihr API-Key
+var lat = ""; !Breitengrad wird automatisch aus der CCU geholt, solange die Variabel "" ist (Format 49.5668)
+var lng = ""; !Längengrad wird automatisch hier aus der CCU geholt, solange die Variabel "" ist (Format 8.3254)
+var rad = "5"; !Suchradius in km; erlaubter Wert: ganze positive Zahl <= 25
+var sort = "price"; !Sortierung; Werte 'price' oder 'dist'
+var type = "e10"; !Spritsorte; erlaubte Werte; Werte: 'e5', 'e10' oder 'diesel'
+
+var CUxD_Device = "CUxD.CUX2801001:2"; !CUxD Virtuelles Gerät
+
+!Alle Variabeln sind optional
+var tank1_adresse = "Tank_Adresse"; !Zeichenkette
+var tank1_preis = "Tank_Preis"; !Zahl 0 - 5 Euro
+var tank1_marke = "Tank_Typ"; !Zeichenkette
+var tank1_entfernung = "Tank_Dist"; !Zahl 0 - 30 km
+
+var tank2_adresse = "Tank2_Adresse"; !Zeichenkette
+var tank2_preis = "Tank2_Preis"; !Zahl 0 - 5 Euro
+var tank2_marke = "Tank2_Typ"; !Zeichenkette
+var tank2_entfernung = "Tank2_Dist"; !Zahl 0 - 30 km
+
+var tank3_adresse = "Tank3_Adresse"; !Zeichenkette
+var tank3_preis = "Tank3_Preis"; !Zahl 0 - 5 Euro
+var tank3_marke = "Tank3_Typ"; !Zeichenkette
+var tank3_entfernung = "Tank3_Dist"; !Zahl 0 - 30 km
+
+var tank4_adresse = "Tank4_Adresse"; !Zeichenkette
+var tank4_preis = "Tank4_Preis"; !Zahl 0 - 5 Euro
+var tank4_marke = "Tank4_Typ"; !Zeichenkette
+var tank4_entfernung = "Tank4_Dist"; !Zahl 0 - 30 km
+
+!-----------------------------------------------------------------------------
+! Ab hier muss man nichts mehr beachten
+!-----------------------------------------------------------------------------
+
+if(lat == ""){
+   lat = system.Latitude().ToString();
+}
+if(lng == ""){
+   lng = system.Longitude().ToString();
+}   
+string tankenUrl = "https://creativecommons.tankerkoenig.de/json/list.php";
+string params = "-d lat=" + lat + " -d lng=" + lng + " -d rad=" + rad  + " -d sort=" + sort + " -d type=" + type + " -d apikey=" + apikey;
+string cmd = "LD_LIBRARY_PATH=/usr/local/addons/cuxd /usr/local/addons/cuxd/curl -k -X GET -H \"Content-Type:application/json\" -G " + params + " " + tankenUrl;
+
+var stdout;
+var posStart;
+var posEnd;
+var adresse;
+var preis;
+var substring;
+var posValueStart;
+var posValueEnd;
+var posValue;
+    
+dom.GetObject(CUxD_Device + ".CMD_SETS").State(cmd);
+dom.GetObject(CUxD_Device + ".CMD_QUERY_RET").State(1);
+stdout  = dom.GetObject(CUxD_Device + ".CMD_RETS").State();
+   
+!-----------------------------------------------------------------------------
+! Tankstelle 1
+!-----------------------------------------------------------------------------
+
+posStart = "[{";
+posEnd = "]}";
+substring = stdout.Substr(stdout.Find(posStart), stdout.Find(posEnd));
+
+!Adresse
+if(dom.GetObject(tank1_adresse).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"name\":\"";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) + ", ";
+
+   posValueStart = "\"street\":\"";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse + substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) + " ";
+
+   posValueStart = "\"houseNumber\":\"";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse + substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) + ", ";
+
+   posValueStart = "\"postCode\":";
+   posValueEnd = ",";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse + substring.Substr(posValue, 6).StrValueByIndex(posValueEnd, 0) + " ";
+
+   posValueStart = "\"place\":\"";
+   posValueEnd = "\"},{";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse  + substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) ;
+
+   dom.GetObject(tank1_adresse).State(adresse);
+}
+
+!Tankstellentyp
+if(dom.GetObject(tank1_marke).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"brand\":\"";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = substring.Substr(posValue, 10).StrValueByIndex(posValueEnd, 0) ;
+   dom.GetObject(tank1_marke).State(adresse);
+}
+
+!Entfernung
+if(dom.GetObject(tank1_entfernung).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"dist\":";
+   posValueEnd = ",";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   preis = substring.Substr(posValue, 6).StrValueByIndex(posValueEnd, 0) ;
+   dom.GetObject(tank1_entfernung).State(preis.ToFloat());
+}
+
+!Preis
+if(dom.GetObject(tank1_preis).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"price\":";
+   posValueEnd = ",";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   preis = substring.Substr(posValue, 6).StrValueByIndex(posValueEnd, 0) ;
+   dom.GetObject(tank1_preis).State(preis.ToFloat());
+}
+
+!-----------------------------------------------------------------------------
+! Tankstelle 2
+!-----------------------------------------------------------------------------
+
+posStart = "},{";
+posEnd = "]}";
+substring = substring.Substr(substring.Find(posStart) + posStart.Length(), substring.Find(posEnd));
+
+!Adresse
+if(dom.GetObject(tank2_adresse).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"name\":\"";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) + ", ";
+
+   posValueStart = "\"street\":\"";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse + substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) + " ";
+
+   posValueStart = "\"houseNumber\":\"";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse + substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) + ", ";
+
+   posValueStart = "\"postCode\":";
+   posValueEnd = ",";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse + substring.Substr(posValue, 6).StrValueByIndex(posValueEnd, 0) + " ";
+
+   posValueStart = "\"place\":\"";
+   posValueEnd = "\"},{";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse  + substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) ;
+
+   dom.GetObject(tank2_adresse).State(adresse);
+}
+
+!Tankstellentyp
+if(dom.GetObject(tank2_marke).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"brand\":";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = substring.Substr(posValue, 10).StrValueByIndex(posValueEnd, 0) ;
+   dom.GetObject(tank2_marke).State(adresse);
+}
+
+!Entfernung
+if(dom.GetObject(tank2_entfernung).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"dist\":";
+   posValueEnd = ",";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   preis = substring.Substr(posValue, 6).StrValueByIndex(posValueEnd, 0) ;
+   dom.GetObject(tank2_entfernung).State(preis.ToFloat());
+}
+
+!Preis
+if(dom.GetObject(tank2_preis).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"price\":";
+   posValueEnd = ",";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   preis = substring.Substr(posValue, 6).StrValueByIndex(posValueEnd, 0) ;
+   dom.GetObject(tank2_preis).State(preis.ToFloat());
+}
+
+!-----------------------------------------------------------------------------
+! Tankstelle 3
+!-----------------------------------------------------------------------------
+
+posStart = "},{";
+posEnd = "]}";
+substring = substring.Substr(substring.Find(posStart) + posStart.Length(), substring.Find(posEnd));
+
+!Adresse
+if(dom.GetObject(tank3_adresse).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"name\":\"";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) + ", ";
+
+   posValueStart = "\"street\":\"";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse + substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) + " ";
+
+   posValueStart = "\"houseNumber\":\"";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse + substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) + ", ";
+
+   posValueStart = "\"postCode\":";
+   posValueEnd = ",";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse + substring.Substr(posValue, 6).StrValueByIndex(posValueEnd, 0) + " ";
+
+   posValueStart = "\"place\":\"";
+   posValueEnd = "\"},{";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse  + substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) ;
+
+   dom.GetObject(tank3_adresse).State(adresse);
+}
+
+!Tankstellentyp
+if(dom.GetObject(tank3_marke).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"brand\":";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = substring.Substr(posValue, 10).StrValueByIndex(posValueEnd, 0) ;
+   dom.GetObject(tank3_marke).State(adresse);
+}
+
+!Entfernung
+if(dom.GetObject(tank3_entfernung).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"dist\":";
+   posValueEnd = ",";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   preis = substring.Substr(posValue, 6).StrValueByIndex(posValueEnd, 0) ;
+   dom.GetObject(tank3_entfernung).State(preis.ToFloat());
+}
+
+!Preis
+if(dom.GetObject(tank3_preis).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"price\":";
+   posValueEnd = ",";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   preis = substring.Substr(posValue, 6).StrValueByIndex(posValueEnd, 0) ;
+   dom.GetObject(tank3_preis).State(preis.ToFloat());
+}
+
+!-----------------------------------------------------------------------------
+! Tankstelle 4
+!-----------------------------------------------------------------------------
+
+posStart = "},{";
+posEnd = "]}";
+substring = substring.Substr(substring.Find(posStart) + posStart.Length(), substring.Find(posEnd));
+
+!Adresse
+if(dom.GetObject(tank4_adresse).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"name\":\"";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) + ", ";
+
+   posValueStart = "\"street\":\"";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse + substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) + " ";
+
+   posValueStart = "\"houseNumber\":\"";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse + substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) + ", ";
+
+   posValueStart = "\"postCode\":";
+   posValueEnd = ",";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse + substring.Substr(posValue, 6).StrValueByIndex(posValueEnd, 0) + " ";
+
+   posValueStart = "\"place\":\"";
+   posValueEnd = "\"},{";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = adresse  + substring.Substr(posValue, 50).StrValueByIndex(posValueEnd, 0) ;
+
+   dom.GetObject(tank4_adresse).State(adresse);
+}
+
+!Tankstellentyp
+if(dom.GetObject(tank1_marke).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"brand\":";
+   posValueEnd = "\",\"";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   adresse = substring.Substr(posValue, 10).StrValueByIndex(posValueEnd, 0) ;
+   dom.GetObject(tank4_marke).State(adresse);
+}
+
+!Entfernung
+if(dom.GetObject(tank1_entfernung).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"dist\":";
+   posValueEnd = ",";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   preis = substring.Substr(posValue, 6).StrValueByIndex(posValueEnd, 0) ;
+   dom.GetObject(tank4_entfernung).State(preis.ToFloat());
+}
+
+!Preis
+if(dom.GetObject(tank4_preis).IsTypeOf(OT_VARDP)){
+   posValueStart = "\"price\":";
+   posValueEnd = ",";
+   posValue = substring.Find(posValueStart) + posValueStart.Length();
+   preis = substring.Substr(posValue, 6).StrValueByIndex(posValueEnd, 0) ;
+   dom.GetObject(tank4_preis).State(preis.ToFloat());
+}
